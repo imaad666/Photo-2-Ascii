@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   description: "Convert images to ASCII art with real-time preview and customizable settings",
   keywords: ["ASCII art", "image converter", "text art", "image to text"],
   authors: [{ name: "ASCII Art Converter" }],
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport = {
