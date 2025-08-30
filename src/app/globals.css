@@ -17,21 +17,24 @@
   line-height: 1;
   letter-spacing: 0;
   font-size: 8px;
+  max-width: 100%;
+  overflow: auto;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: #1a1a1a;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #333;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -93,4 +96,20 @@
 .toggleSwitch--checked::after {
   transform: translateX(100%);
   transition-duration: .3s;
+}
+
+/* Hover effects for better interactivity */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Focus states for better accessibility */
+.focus-ring:focus {
+  outline: 2px solid #00ff88;
+  outline-offset: 2px;
 }
