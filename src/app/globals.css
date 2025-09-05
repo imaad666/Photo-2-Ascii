@@ -12,26 +12,30 @@
 
 /* ASCII Art specific styles */
 .ascii-art {
+  --ascii-font-size: 8px;
   font-family: 'Courier New', monospace;
   white-space: pre;
   line-height: 1;
   letter-spacing: 0;
-  font-size: 8px;
+  font-size: var(--ascii-font-size);
+  max-width: 100%;
+  overflow: auto;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: #1a1a1a;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #333;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -79,7 +83,7 @@
   height: 30px;
   width: 50%;
   left: 0px;
-  background: conic-gradient(rgba(26, 26, 26, 0.555),white,rgba(26, 26, 26, 0.555),white,rgba(26, 26, 26, 0.555));
+  background: conic-gradient(rgba(26, 26, 26, 0.555), white, rgba(26, 26, 26, 0.555), white, rgba(26, 26, 26, 0.555));
   border-radius: 40px;
   transition-duration: .3s;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.281);
@@ -93,4 +97,33 @@
 .toggleSwitch--checked::after {
   transform: translateX(100%);
   transition-duration: .3s;
+}
+
+/* Hover effects for better interactivity */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Focus states for better accessibility */
+.focus-ring:focus {
+  outline: 2px solid #00ff88;
+  outline-offset: 2px;
+}
+
+/* Text selection */
+::selection {
+  background: rgba(0, 255, 136, 0.25);
+  color: #ffffff;
+}
+
+/* Utility for glassy panels */
+.panel {
+  background: rgba(17, 17, 17, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px);
 }

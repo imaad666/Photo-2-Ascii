@@ -6,12 +6,12 @@ import { Slider } from "@/components/ui/slider"
 import { CustomToggle } from "@/components/ui/custom-toggle"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  Upload, 
-  Download, 
-  Copy, 
-  Image as ImageIcon, 
-  Settings, 
+import {
+  Upload,
+  Download,
+  Copy,
+  Image as ImageIcon,
+  Settings,
   Palette,
   Monitor,
   Sparkles,
@@ -50,7 +50,9 @@ export default function AsciiConverter() {
     inverted: false,
     grayscale: true,
   })
-  
+  const [asciiFontSize, setAsciiFontSize] = useState<number>(8)
+  const [canvasZoom, setCanvasZoom] = useState<number>(1)
+
   const [imageLoaded, setImageLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +86,7 @@ export default function AsciiConverter() {
     if (imageLoaded && !loading && !error) {
       renderToCanvas()
     }
-  }, [asciiArt, coloredAsciiArt, settings.grayscale, loading, error, imageLoaded])
+  }, [asciiArt, coloredAsciiArt, settings.grayscale, asciiFontSize, canvasZoom, loading, error, imageLoaded])
 
   const loadDefaultImage = () => {
     setLoading(true)
@@ -201,7 +203,7 @@ export default function AsciiConverter() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    const fontSize = 8
+    const fontSize = asciiFontSize
     ctx.font = `${fontSize}px monospace`
     ctx.textBaseline = "top"
 
@@ -223,18 +225,24 @@ export default function AsciiConverter() {
 
     if (settings.grayscale) {
       ctx.fillStyle = "white"
+      ctx.save()
+      ctx.scale(canvasZoom, canvasZoom)
       asciiArt.split("\n").forEach((line, lineIndex) => {
         ctx.fillText(line, 0, lineIndex * lineHeight)
       })
+      ctx.restore()
     } else {
+      ctx.save()
+      ctx.scale(canvasZoom, canvasZoom)
       coloredAsciiArt.forEach((row, rowIndex) => {
         row.forEach((col, colIndex) => {
           ctx.fillStyle = col.color
           ctx.fillText(col.char, colIndex * charWidth, rowIndex * lineHeight)
         })
       })
+      ctx.restore()
     }
-  }, [asciiArt, coloredAsciiArt, settings.grayscale])
+  }, [asciiArt, coloredAsciiArt, settings.grayscale, asciiFontSize, canvasZoom])
 
   const convertToAscii = useCallback(() => {
     try {
@@ -374,40 +382,51 @@ export default function AsciiConverter() {
   return (
     <div className="min-h-screen bg-black text-white flex">
       {/* Left Sidebar */}
-      <div className="w-80 bg-gray-900 border-r border-gray-800 p-6 overflow-y-auto">
-        <div className="space-y-6">
+      <div className="w-full md:w-96 bg-gray-900 border-r border-gray-800 p-6 md:p-8 overflow-y-auto">
+        <div className="space-y-8">
           {/* Header */}
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-primary mb-2">ASCII Art</h1>
-            <p className="text-gray-400 text-sm">Convert images to ASCII art</p>
+          <div className="text-center pb-6 md:pb-8 border-b border-gray-800">
+            <div className="mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl border border-primary/30 mb-4">
+                <span className="text-2xl font-bold text-primary">A</span>
+              </div>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-primary mb-3 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              ASCII Art
+            </h1>
+            <p className="text-gray-400 text-xs md:text-sm">Convert images to ASCII art with style</p>
           </div>
 
           {/* Upload Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
+          <div className="space-y-5">
+            <h3 className="text-base md:text-lg font-semibold flex items-center gap-3 text-gray-100">
+              <ImageIcon className="h-5 w-5 text-primary" />
               Upload Image
             </h3>
-            
+
             <div
               ref={dropZoneRef}
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${
-                isDragging
-                  ? "border-primary bg-primary/10"
-                  : "border-gray-600 hover:border-primary hover:bg-gray-800"
-              }`}
+              className={`border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-all duration-300 cursor-pointer hover-lift ${isDragging
+                  ? "border-primary bg-primary/20 scale-105"
+                  : "border-gray-600 hover:border-primary hover:bg-gray-800/50"
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className="h-8 w-8 mx-auto mb-3 text-gray-400" />
-              <p className="text-gray-300 mb-1">
+              <div className={`transition-all duration-300 ${isDragging ? 'scale-110' : ''}`}>
+                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400 hover:text-primary transition-colors duration-200" />
+              </div>
+              <p className="text-gray-300 mb-2 text-sm md:text-base font-medium">
                 {isDragging ? "Drop your image here" : "Click to upload or drag and drop"}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs md:text-sm text-gray-500">
                 JPG, PNG, GIF, WebP
               </p>
+              <div className="mt-3 text-[10px] md:text-xs text-gray-600 bg-gray-800/50 px-3 py-1 rounded-full inline-block">
+                Supports up to 10MB
+              </div>
             </div>
             <input
               ref={fileInputRef}
@@ -419,17 +438,17 @@ export default function AsciiConverter() {
           </div>
 
           {/* Settings Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Settings className="h-5 w-5" />
+          <div className="space-y-6">
+            <h3 className="text-base md:text-lg font-semibold flex items-center gap-3 text-gray-100">
+              <Settings className="h-5 w-5 text-primary" />
               Settings
             </h3>
 
             {/* Resolution */}
-            <div className="space-y-2">
-              <Label className="flex items-center justify-between text-sm">
+            <div className="space-y-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl p-4 md:p-5 border border-gray-700/30 hover:border-gray-600/50 transition-all duration-300">
+              <Label className="flex items-center justify-between text-sm font-medium">
                 <span>Resolution</span>
-                <span className="text-primary font-mono">
+                <span className="text-primary font-mono bg-primary/20 px-3 py-1.5 rounded-lg border border-primary/30">
                   {settings.resolution.toFixed(2)}
                 </span>
               </Label>
@@ -442,21 +461,27 @@ export default function AsciiConverter() {
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-gray-500">
-                <span>Low Detail</span>
-                <span>High Detail</span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  Low Detail
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                  High Detail
+                </span>
               </div>
             </div>
 
             {/* Character Set */}
-            <div className="space-y-2">
-              <Label className="text-sm">Character Set</Label>
+            <div className="space-y-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl p-4 md:p-5 border border-gray-700/30 hover:border-gray-600/50 transition-all duration-300">
+              <Label className="text-sm font-medium">Character Set</Label>
               <Select value={settings.charSet} onValueChange={(value) => updateSetting("charSet", value)}>
-                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                <SelectTrigger className="bg-gray-700/80 border-gray-600 text-white hover:bg-gray-600/80 transition-colors duration-200">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                <SelectContent className="bg-gray-700/95 border-gray-600 text-white backdrop-blur-sm">
                   {Object.entries(charSets).map(([key, { name }]) => (
-                    <SelectItem key={key} value={key} className="hover:bg-gray-700">
+                    <SelectItem key={key} value={key} className="hover:bg-gray-600/80 transition-colors duration-200">
                       {name}
                     </SelectItem>
                   ))}
@@ -465,10 +490,10 @@ export default function AsciiConverter() {
             </div>
 
             {/* Toggles */}
-            <div className="space-y-3">
+            <div className="space-y-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl p-4 md:p-5 border border-gray-700/30 hover:border-gray-600/50 transition-all duration-300">
               <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2 text-sm">
-                  <Palette className="h-4 w-4" />
+                <Label className="flex items-center gap-3 text-sm font-medium">
+                  <Palette className="h-4 w-4 text-primary" />
                   Invert Colors
                 </Label>
                 <CustomToggle
@@ -477,8 +502,8 @@ export default function AsciiConverter() {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2 text-sm">
-                  <Monitor className="h-4 w-4" />
+                <Label className="flex items-center gap-3 text-sm font-medium">
+                  <Monitor className="h-4 w-4 text-primary" />
                   Grayscale Mode
                 </Label>
                 <CustomToggle
@@ -490,49 +515,51 @@ export default function AsciiConverter() {
           </div>
 
           {/* Actions */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
+          <div className="space-y-4">
+            <h3 className="text-base md:text-lg font-semibold flex items-center gap-3 text-gray-100">
+              <Sparkles className="h-5 w-5 text-primary" />
               Actions
             </h3>
-            
-            <Button
-              onClick={copyToClipboard}
-              className="w-full bg-primary hover:bg-primary/90 text-black font-semibold"
-              disabled={loading || !imageLoaded || !asciiArt}
-            >
-              {copied ? (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy to Clipboard
-                </>
-              )}
-            </Button>
-            
-            <Button
-              onClick={downloadAsciiArt}
-              variant="outline"
-              className="w-full border-gray-600 hover:bg-gray-800"
-              disabled={loading || !imageLoaded || !asciiArt}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download as Text
-            </Button>
+
+            <div className="space-y-3">
+              <Button
+                onClick={copyToClipboard}
+                className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-black font-semibold h-12 text-sm md:text-base transition-all duration-300 hover-lift shadow-lg shadow-primary/25"
+                disabled={loading || !imageLoaded || !asciiArt}
+              >
+                {copied ? (
+                  <>
+                    <CheckCircle className="h-5 w-5 mr-3" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-5 w-5 mr-3" />
+                    Copy to Clipboard
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={downloadAsciiArt}
+                variant="outline"
+                className="w-full border-gray-600 hover:bg-gray-800/50 hover:border-gray-500 h-12 text-sm md:text-base transition-all duration-300 hover-lift bg-gray-800/20"
+                disabled={loading || !imageLoaded || !asciiArt}
+              >
+                <Download className="h-5 w-5 mr-3" />
+                Download as Text
+              </Button>
+            </div>
           </div>
 
           {/* Error Display */}
           {error && (
-            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
                   <p className="text-red-400 font-medium">{error}</p>
-                  <p className="text-gray-400 text-xs mt-1">
+                  <p className="text-gray-400 text-xs mt-2">
                     Try uploading a different image or refreshing the page.
                   </p>
                 </div>
@@ -545,45 +572,74 @@ export default function AsciiConverter() {
       {/* Main Preview Area */}
       <div className="flex-1 flex flex-col">
         {/* Preview Header */}
-        <div className="bg-gray-900 border-b border-gray-800 p-4">
+        <div className="bg-gray-900 border-b border-gray-800 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Preview</h2>
-            <div className="flex gap-2">
+            <h2 className="text-2xl font-semibold text-gray-100">Preview</h2>
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant={previewMode === "ascii" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setPreviewMode("ascii")}
-                className="text-xs"
+                className="text-sm px-4 py-2"
               >
-                Text
+                Text View
               </Button>
               <Button
                 variant={previewMode === "canvas" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setPreviewMode("canvas")}
-                className="text-xs"
+                className="text-sm px-4 py-2"
               >
-                Canvas
+                Canvas View
               </Button>
+              <div className="hidden md:flex items-center gap-2 pl-3 ml-3 border-l border-gray-800">
+                <Label className="text-xs text-gray-400">Font</Label>
+                <Slider
+                  value={[asciiFontSize]}
+                  onValueChange={(v) => setAsciiFontSize(v[0])}
+                  min={6}
+                  max={16}
+                  step={1}
+                  className="w-32"
+                />
+                <div className="text-xs text-primary font-mono bg-primary/20 px-2 py-1 rounded border border-primary/30">
+                  {asciiFontSize}px
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-2 pl-3 ml-3 border-l border-gray-800">
+                <Label className="text-xs text-gray-400">Zoom</Label>
+                <Slider
+                  value={[canvasZoom]}
+                  onValueChange={(v) => setCanvasZoom(Number(v[0]))}
+                  min={0.5}
+                  max={3}
+                  step={0.1}
+                  className="w-32"
+                />
+                <div className="text-xs text-primary font-mono bg-primary/20 px-2 py-1 rounded border border-primary/30">
+                  {Math.round(canvasZoom * 100)}%
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Preview Content */}
-        <div className="flex-1 bg-black p-8 overflow-auto">
+        <div className="flex-1 bg-gradient-to-br from-black via-gray-900/20 to-black p-10 overflow-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                <p className="text-gray-400">Converting image...</p>
+              <div className="text-center bg-gray-900/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-800/50">
+                <Loader2 className="h-16 w-16 animate-spin mx-auto mb-6 text-primary" />
+                <p className="text-gray-400 text-xl font-medium">Converting image...</p>
+                <p className="text-gray-500 text-sm mt-2">This may take a few seconds</p>
               </div>
             </div>
           ) : error ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-4" />
-                <p className="text-red-400 mb-2">{error}</p>
-                <p className="text-gray-400 text-sm">
+              <div className="text-center bg-red-900/20 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30">
+                <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-6" />
+                <p className="text-red-400 mb-3 text-xl font-medium">{error}</p>
+                <p className="text-gray-400 text-base">
                   Try uploading a different image or refreshing the page.
                 </p>
               </div>
@@ -591,14 +647,18 @@ export default function AsciiConverter() {
           ) : (
             <div className="flex items-center justify-center h-full">
               {previewMode === "ascii" ? (
-                <pre className="ascii-art text-xs leading-none select-text">
-                  {asciiArt}
-                </pre>
+                <div className="bg-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-800/50 shadow-2xl max-w-4xl max-h-full overflow-auto">
+                  <pre className="ascii-art leading-none select-text" style={{ ['--ascii-font-size' as any]: `${asciiFontSize}px` }}>
+                    {asciiArt}
+                  </pre>
+                </div>
               ) : (
-                <canvas
-                  ref={outputCanvasRef}
-                  className="max-w-full max-h-full"
-                />
+                <div className="bg-gray-900/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-800/50 shadow-2xl">
+                  <canvas
+                    ref={outputCanvasRef}
+                    className="max-w-full max-h-full rounded-lg"
+                  />
+                </div>
               )}
             </div>
           )}
