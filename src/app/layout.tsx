@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,6 +23,8 @@ export const viewport = {
   initialScale: 1,
 };
 
+const inter = Inter({ subsets: ["latin"], display: "swap" });
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className={`${inter.className} antialiased`}>
         {children}
       </body>
     </html>
