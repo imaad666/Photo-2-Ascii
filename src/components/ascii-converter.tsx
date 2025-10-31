@@ -97,7 +97,7 @@ export default function AsciiConverter() {
     img.crossOrigin = "anonymous"
 
     img.onload = () => {
-      if (img.width === 0 || img.height === 0) {
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
         setError("Invalid image dimensions")
         setLoading(false)
         return
@@ -113,7 +113,7 @@ export default function AsciiConverter() {
       setLoading(false)
     }
 
-    img.src = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop&crop=center"
+    img.src = "/globe.svg"
   }
 
   const loadImage = (src: string) => {
@@ -125,7 +125,7 @@ export default function AsciiConverter() {
     img.crossOrigin = "anonymous"
 
     img.onload = () => {
-      if (img.width === 0 || img.height === 0) {
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
         setError("Invalid image dimensions")
         setLoading(false)
         return
@@ -213,11 +213,15 @@ export default function AsciiConverter() {
     if (settings.grayscale) {
       const lines = asciiArt.split("\n")
       const maxLineLength = Math.max(...lines.map((line) => line.length))
-      canvas.width = maxLineLength * charWidth
-      canvas.height = lines.length * lineHeight
+      const baseWidth = maxLineLength * charWidth
+      const baseHeight = lines.length * lineHeight
+      canvas.width = Math.ceil(baseWidth * canvasZoom)
+      canvas.height = Math.ceil(baseHeight * canvasZoom)
     } else {
-      canvas.width = coloredAsciiArt[0].length * charWidth
-      canvas.height = coloredAsciiArt.length * lineHeight
+      const baseWidth = coloredAsciiArt[0].length * charWidth
+      const baseHeight = coloredAsciiArt.length * lineHeight
+      canvas.width = Math.ceil(baseWidth * canvasZoom)
+      canvas.height = Math.ceil(baseHeight * canvasZoom)
     }
 
     ctx.font = `${fontSize}px monospace`
@@ -251,7 +255,9 @@ export default function AsciiConverter() {
       }
 
       const img = imageRef.current
-      if (img.width === 0 || img.height === 0) {
+      const imgWidth = (img as HTMLImageElement).naturalWidth || img.width
+      const imgHeight = (img as HTMLImageElement).naturalHeight || img.height
+      if (imgWidth === 0 || imgHeight === 0) {
         throw new Error("Invalid image dimensions")
       }
 
@@ -261,17 +267,17 @@ export default function AsciiConverter() {
         throw new Error("Could not get canvas context")
       }
 
-      const width = Math.floor(img.width * settings.resolution)
-      const height = Math.floor(img.height * settings.resolution)
+      const width = Math.floor(imgWidth * settings.resolution)
+      const height = Math.floor(imgHeight * settings.resolution)
 
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = imgWidth
+      canvas.height = imgHeight
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0, img.width, img.height)
+      ctx.drawImage(img, 0, 0, imgWidth, imgHeight)
 
       let imageData
       try {
-        imageData = ctx.getImageData(0, 0, img.width, img.height)
+        imageData = ctx.getImageData(0, 0, imgWidth, imgHeight)
       } catch {
         throw new Error("Failed to get image data. This might be a CORS issue.")
       }
@@ -279,17 +285,17 @@ export default function AsciiConverter() {
       const data = imageData.data
       const chars = charSets[settings.charSet as keyof typeof charSets].chars
       const fontAspect = 0.5
-      const widthStep = Math.ceil(img.width / width)
-      const heightStep = Math.ceil(img.height / height / fontAspect)
+      const widthStep = Math.ceil(imgWidth / width)
+      const heightStep = Math.ceil(imgHeight / height / fontAspect)
 
       let result = ""
       const coloredResult: ColoredChar[][] = []
 
-      for (let y = 0; y < img.height; y += heightStep) {
+      for (let y = 0; y < imgHeight; y += heightStep) {
         const coloredRow: ColoredChar[] = []
 
-        for (let x = 0; x < img.width; x += widthStep) {
-          const pos = (y * img.width + x) * 4
+        for (let x = 0; x < imgWidth; x += widthStep) {
+          const pos = (y * imgWidth + x) * 4
           const r = data[pos]
           const g = data[pos + 1]
           const b = data[pos + 2]
@@ -407,8 +413,8 @@ export default function AsciiConverter() {
             <div
               ref={dropZoneRef}
               className={`border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-all duration-300 cursor-pointer hover-lift ${isDragging
-                  ? "border-primary bg-primary/20 scale-105"
-                  : "border-gray-600 hover:border-primary hover:bg-gray-800/50"
+                ? "border-primary bg-primary/20 scale-105"
+                : "border-gray-600 hover:border-primary hover:bg-gray-800/50"
                 }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
