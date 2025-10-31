@@ -1,0 +1,12 @@
+0 verbose cli /opt/homebrew/Cellar/node/24.7.0/bin/node /opt/homebrew/bin/npm
+1 info using npm@11.5.1
+2 info using node@v24.7.0
+3 silly config load:file:/opt/homebrew/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/imaad/i/P to Ascii/Photo-2-Ascii/.npmrc
+5 silly config load:file:/Users/imaad/.npmrc
+6 silly config load:file:/opt/homebrew/etc/npmrc
+7 verbose title npm run dev --port 3001 --hostname 127.0.0.1
+8 verbose argv "run" "dev" "--" "--port" "3001" "--hostname" "127.0.0.1"
+9 verbose logfile logs-max:10 dir:/Users/imaad/i/P to Ascii/Photo-2-Ascii/.npm-cache/_logs/2025-10-31T10_06_59_504Z-
+10 verbose logfile /Users/imaad/i/P to Ascii/Photo-2-Ascii/.npm-cache/_logs/2025-10-31T10_06_59_504Z-debug-0.log
+11 silly logfile done cleaning log files

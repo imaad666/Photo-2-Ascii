@@ -6,12 +6,12 @@ import { Slider } from "@/components/ui/slider"
 import { CustomToggle } from "@/components/ui/custom-toggle"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  Upload, 
-  Download, 
-  Copy, 
-  Image as ImageIcon, 
-  Settings, 
+import {
+  Upload,
+  Download,
+  Copy,
+  Image as ImageIcon,
+  Settings,
   Palette,
   Monitor,
   Sparkles,
@@ -50,7 +50,7 @@ export default function AsciiConverter() {
     inverted: false,
     grayscale: true,
   })
-  
+
   const [imageLoaded, setImageLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +95,7 @@ export default function AsciiConverter() {
     img.crossOrigin = "anonymous"
 
     img.onload = () => {
-      if (img.width === 0 || img.height === 0) {
+      if ((img as HTMLImageElement).naturalWidth === 0 || (img as HTMLImageElement).naturalHeight === 0) {
         setError("Invalid image dimensions")
         setLoading(false)
         return
@@ -111,7 +111,7 @@ export default function AsciiConverter() {
       setLoading(false)
     }
 
-    img.src = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop&crop=center"
+    img.src = "/globe.svg"
   }
 
   const loadImage = (src: string) => {
@@ -123,7 +123,7 @@ export default function AsciiConverter() {
     img.crossOrigin = "anonymous"
 
     img.onload = () => {
-      if (img.width === 0 || img.height === 0) {
+      if ((img as HTMLImageElement).naturalWidth === 0 || (img as HTMLImageElement).naturalHeight === 0) {
         setError("Invalid image dimensions")
         setLoading(false)
         return
@@ -243,7 +243,9 @@ export default function AsciiConverter() {
       }
 
       const img = imageRef.current
-      if (img.width === 0 || img.height === 0) {
+      const imgWidth = (img as HTMLImageElement).naturalWidth || img.width
+      const imgHeight = (img as HTMLImageElement).naturalHeight || img.height
+      if (imgWidth === 0 || imgHeight === 0) {
         throw new Error("Invalid image dimensions")
       }
 
@@ -253,17 +255,17 @@ export default function AsciiConverter() {
         throw new Error("Could not get canvas context")
       }
 
-      const width = Math.floor(img.width * settings.resolution)
-      const height = Math.floor(img.height * settings.resolution)
+      const width = Math.floor(imgWidth * settings.resolution)
+      const height = Math.floor(imgHeight * settings.resolution)
 
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = imgWidth
+      canvas.height = imgHeight
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0, img.width, img.height)
+      ctx.drawImage(img, 0, 0, imgWidth, imgHeight)
 
       let imageData
       try {
-        imageData = ctx.getImageData(0, 0, img.width, img.height)
+        imageData = ctx.getImageData(0, 0, imgWidth, imgHeight)
       } catch {
         throw new Error("Failed to get image data. This might be a CORS issue.")
       }
@@ -271,17 +273,17 @@ export default function AsciiConverter() {
       const data = imageData.data
       const chars = charSets[settings.charSet as keyof typeof charSets].chars
       const fontAspect = 0.5
-      const widthStep = Math.ceil(img.width / width)
-      const heightStep = Math.ceil(img.height / height / fontAspect)
+      const widthStep = Math.ceil(imgWidth / width)
+      const heightStep = Math.ceil(imgHeight / height / fontAspect)
 
       let result = ""
       const coloredResult: ColoredChar[][] = []
 
-      for (let y = 0; y < img.height; y += heightStep) {
+      for (let y = 0; y < imgHeight; y += heightStep) {
         const coloredRow: ColoredChar[] = []
 
-        for (let x = 0; x < img.width; x += widthStep) {
-          const pos = (y * img.width + x) * 4
+        for (let x = 0; x < imgWidth; x += widthStep) {
+          const pos = (y * imgWidth + x) * 4
           const r = data[pos]
           const g = data[pos + 1]
           const b = data[pos + 2]
@@ -388,14 +390,13 @@ export default function AsciiConverter() {
               <ImageIcon className="h-5 w-5" />
               Upload Image
             </h3>
-            
+
             <div
               ref={dropZoneRef}
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${
-                isDragging
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${isDragging
                   ? "border-primary bg-primary/10"
                   : "border-gray-600 hover:border-primary hover:bg-gray-800"
-              }`}
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -495,7 +496,7 @@ export default function AsciiConverter() {
               <Sparkles className="h-5 w-5" />
               Actions
             </h3>
-            
+
             <Button
               onClick={copyToClipboard}
               className="w-full bg-primary hover:bg-primary/90 text-black font-semibold"
@@ -513,7 +514,7 @@ export default function AsciiConverter() {
                 </>
               )}
             </Button>
-            
+
             <Button
               onClick={downloadAsciiArt}
               variant="outline"

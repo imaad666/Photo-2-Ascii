@@ -1,0 +1,30 @@
+
+> photo2ascii@0.1.0 dev
+> next dev --turbopack --port 3001 --hostname 127.0.0.1
+
+   ▲ Next.js 15.5.2 (Turbopack)
+   - Local:        http://127.0.0.1:3001
+   - Network:      http://127.0.0.1:3001
+
+ ✓ Starting...
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+ ✓ Ready in 927ms
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+Watchpack Error (watcher): Error: EMFILE: too many open files, watch
+ ○ Compiling /_not-found/page ...
+ ✓ Compiled /_not-found/page in 2.8s
+ GET / 404 in 3083ms
+ GET / 404 in 75ms
+ GET / 404 in 66ms
