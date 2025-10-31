@@ -17,7 +17,11 @@ import {
   Sparkles,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Sun,
+  Moon,
+  RefreshCcw,
+  ImagePlus
 } from "lucide-react"
 
 // Types
@@ -52,6 +56,7 @@ export default function AsciiConverter() {
   })
   const [asciiFontSize, setAsciiFontSize] = useState<number>(8)
   const [canvasZoom, setCanvasZoom] = useState<number>(1)
+  const [backgroundMode, setBackgroundMode] = useState<"dark" | "light">("dark")
 
   const [imageLoaded, setImageLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -97,7 +102,7 @@ export default function AsciiConverter() {
     img.crossOrigin = "anonymous"
 
     img.onload = () => {
-      if (img.width === 0 || img.height === 0) {
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
         setError("Invalid image dimensions")
         setLoading(false)
         return
@@ -113,7 +118,7 @@ export default function AsciiConverter() {
       setLoading(false)
     }
 
-    img.src = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop&crop=center"
+    img.src = "/globe.svg"
   }
 
   const loadImage = (src: string) => {
@@ -125,7 +130,7 @@ export default function AsciiConverter() {
     img.crossOrigin = "anonymous"
 
     img.onload = () => {
-      if (img.width === 0 || img.height === 0) {
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
         setError("Invalid image dimensions")
         setLoading(false)
         return
@@ -213,36 +218,40 @@ export default function AsciiConverter() {
     if (settings.grayscale) {
       const lines = asciiArt.split("\n")
       const maxLineLength = Math.max(...lines.map((line) => line.length))
-      canvas.width = maxLineLength * charWidth
-      canvas.height = lines.length * lineHeight
+      const baseWidth = maxLineLength * charWidth
+      const baseHeight = lines.length * lineHeight
+      canvas.width = Math.ceil(baseWidth * canvasZoom)
+      canvas.height = Math.ceil(baseHeight * canvasZoom)
     } else {
-      canvas.width = coloredAsciiArt[0].length * charWidth
-      canvas.height = coloredAsciiArt.length * lineHeight
+      const baseWidth = coloredAsciiArt[0].length * charWidth
+      const baseHeight = coloredAsciiArt.length * lineHeight
+      canvas.width = Math.ceil(baseWidth * canvasZoom)
+      canvas.height = Math.ceil(baseHeight * canvasZoom)
     }
 
     ctx.font = `${fontSize}px monospace`
     ctx.textBaseline = "top"
 
     if (settings.grayscale) {
-      ctx.fillStyle = "white"
+      ctx.fillStyle = backgroundMode === "light" ? "black" : "white"
       ctx.save()
       ctx.scale(canvasZoom, canvasZoom)
-      asciiArt.split("\n").forEach((line, lineIndex) => {
+      asciiArt.split("\n").forEach((line: string, lineIndex: number) => {
         ctx.fillText(line, 0, lineIndex * lineHeight)
       })
       ctx.restore()
     } else {
       ctx.save()
       ctx.scale(canvasZoom, canvasZoom)
-      coloredAsciiArt.forEach((row, rowIndex) => {
-        row.forEach((col, colIndex) => {
+      coloredAsciiArt.forEach((row: ColoredChar[], rowIndex: number) => {
+        row.forEach((col: ColoredChar, colIndex: number) => {
           ctx.fillStyle = col.color
           ctx.fillText(col.char, colIndex * charWidth, rowIndex * lineHeight)
         })
       })
       ctx.restore()
     }
-  }, [asciiArt, coloredAsciiArt, settings.grayscale, asciiFontSize, canvasZoom])
+  }, [asciiArt, coloredAsciiArt, settings.grayscale, asciiFontSize, canvasZoom, backgroundMode])
 
   const convertToAscii = useCallback(() => {
     try {
@@ -251,7 +260,9 @@ export default function AsciiConverter() {
       }
 
       const img = imageRef.current
-      if (img.width === 0 || img.height === 0) {
+      const imgWidth = (img as HTMLImageElement).naturalWidth || img.width
+      const imgHeight = (img as HTMLImageElement).naturalHeight || img.height
+      if (imgWidth === 0 || imgHeight === 0) {
         throw new Error("Invalid image dimensions")
       }
 
@@ -261,17 +272,17 @@ export default function AsciiConverter() {
         throw new Error("Could not get canvas context")
       }
 
-      const width = Math.floor(img.width * settings.resolution)
-      const height = Math.floor(img.height * settings.resolution)
+      const width = Math.floor(imgWidth * settings.resolution)
+      const height = Math.floor(imgHeight * settings.resolution)
 
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = imgWidth
+      canvas.height = imgHeight
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0, img.width, img.height)
+      ctx.drawImage(img, 0, 0, imgWidth, imgHeight)
 
       let imageData
       try {
-        imageData = ctx.getImageData(0, 0, img.width, img.height)
+        imageData = ctx.getImageData(0, 0, imgWidth, imgHeight)
       } catch {
         throw new Error("Failed to get image data. This might be a CORS issue.")
       }
@@ -279,17 +290,17 @@ export default function AsciiConverter() {
       const data = imageData.data
       const chars = charSets[settings.charSet as keyof typeof charSets].chars
       const fontAspect = 0.5
-      const widthStep = Math.ceil(img.width / width)
-      const heightStep = Math.ceil(img.height / height / fontAspect)
+      const widthStep = Math.ceil(imgWidth / width)
+      const heightStep = Math.ceil(imgHeight / height / fontAspect)
 
       let result = ""
       const coloredResult: ColoredChar[][] = []
 
-      for (let y = 0; y < img.height; y += heightStep) {
+      for (let y = 0; y < imgHeight; y += heightStep) {
         const coloredRow: ColoredChar[] = []
 
-        for (let x = 0; x < img.width; x += widthStep) {
-          const pos = (y * img.width + x) * 4
+        for (let x = 0; x < imgWidth; x += widthStep) {
+          const pos = (y * imgWidth + x) * 4
           const r = data[pos]
           const g = data[pos + 1]
           const b = data[pos + 2]
@@ -376,11 +387,23 @@ export default function AsciiConverter() {
     key: K,
     value: ConversionSettings[K]
   ) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
+    setSettings((prev: ConversionSettings) => ({ ...prev, [key]: value }))
   }
 
+  const resetAll = () => {
+    setSettings({ resolution: 0.15, charSet: "standard", inverted: false, grayscale: true })
+    setAsciiFontSize(8)
+    setCanvasZoom(1)
+    setBackgroundMode("dark")
+    setError(null)
+  }
+
+  const lines = asciiArt ? asciiArt.split("\n") : []
+  const asciiColumns = lines.length ? Math.max(...lines.map((l: string) => l.length)) : 0
+  const asciiRows = lines.length
+
   return (
-    <div className="min-h-screen bg-black text-white flex">
+    <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
       {/* Left Sidebar */}
       <div className="w-full md:w-96 bg-gray-900 border-r border-gray-800 p-6 md:p-8 overflow-y-auto">
         <div className="space-y-8">
@@ -407,8 +430,8 @@ export default function AsciiConverter() {
             <div
               ref={dropZoneRef}
               className={`border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-all duration-300 cursor-pointer hover-lift ${isDragging
-                  ? "border-primary bg-primary/20 scale-105"
-                  : "border-gray-600 hover:border-primary hover:bg-gray-800/50"
+                ? "border-primary bg-primary/20 scale-105"
+                : "border-gray-600 hover:border-primary hover:bg-gray-800/50"
                 }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -498,7 +521,7 @@ export default function AsciiConverter() {
                 </Label>
                 <CustomToggle
                   checked={settings.inverted}
-                  onCheckedChange={(checked) => updateSetting("inverted", checked)}
+                  onCheckedChange={(checked: boolean) => updateSetting("inverted", checked)}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -508,7 +531,7 @@ export default function AsciiConverter() {
                 </Label>
                 <CustomToggle
                   checked={settings.grayscale}
-                  onCheckedChange={(checked) => updateSetting("grayscale", checked)}
+                  onCheckedChange={(checked: boolean) => updateSetting("grayscale", checked)}
                 />
               </div>
             </div>
@@ -572,7 +595,7 @@ export default function AsciiConverter() {
       {/* Main Preview Area */}
       <div className="flex-1 flex flex-col">
         {/* Preview Header */}
-        <div className="bg-gray-900 border-b border-gray-800 p-6">
+        <div className="bg-gray-900/90 backdrop-blur sticky top-0 z-10 border-b border-gray-800 p-4 md:p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold text-gray-100">Preview</h2>
             <div className="flex flex-wrap items-center gap-3">
@@ -593,10 +616,31 @@ export default function AsciiConverter() {
                 Canvas View
               </Button>
               <div className="hidden md:flex items-center gap-2 pl-3 ml-3 border-l border-gray-800">
+                <Label className="text-xs text-gray-400">BG</Label>
+                <Button
+                  variant={backgroundMode === "dark" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBackgroundMode("dark")}
+                  className="h-8 px-2"
+                  title="Dark background"
+                >
+                  <Moon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={backgroundMode === "light" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBackgroundMode("light")}
+                  className="h-8 px-2"
+                  title="Light background"
+                >
+                  <Sun className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="hidden md:flex items-center gap-2 pl-3 ml-3 border-l border-gray-800">
                 <Label className="text-xs text-gray-400">Font</Label>
                 <Slider
                   value={[asciiFontSize]}
-                  onValueChange={(v) => setAsciiFontSize(v[0])}
+                  onValueChange={(v: number[]) => setAsciiFontSize(v[0])}
                   min={6}
                   max={16}
                   step={1}
@@ -610,7 +654,7 @@ export default function AsciiConverter() {
                 <Label className="text-xs text-gray-400">Zoom</Label>
                 <Slider
                   value={[canvasZoom]}
-                  onValueChange={(v) => setCanvasZoom(Number(v[0]))}
+                  onValueChange={(v: number[]) => setCanvasZoom(Number(v[0]))}
                   min={0.5}
                   max={3}
                   step={0.1}
@@ -620,7 +664,33 @@ export default function AsciiConverter() {
                   {Math.round(canvasZoom * 100)}%
                 </div>
               </div>
+              <div className="hidden md:flex items-center gap-2 pl-3 ml-3 border-l border-gray-800">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={resetAll}
+                  title="Reset settings"
+                >
+                  <RefreshCcw className="h-4 w-4 mr-2" /> Reset
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={loadDefaultImage}
+                  title="Load sample image"
+                >
+                  <ImagePlus className="h-4 w-4 mr-2" /> Sample
+                </Button>
+              </div>
             </div>
+          </div>
+          {/* Stats */}
+          <div className="mt-3 hidden md:flex items-center gap-2 text-xs text-gray-400">
+            <span className="px-2 py-1 rounded bg-gray-800/70 border border-gray-700">Rows: {asciiRows}</span>
+            <span className="px-2 py-1 rounded bg-gray-800/70 border border-gray-700">Cols: {asciiColumns}</span>
+            <span className="px-2 py-1 rounded bg-gray-800/70 border border-gray-700">Chars: {asciiArt.length}</span>
           </div>
         </div>
 
@@ -647,13 +717,13 @@ export default function AsciiConverter() {
           ) : (
             <div className="flex items-center justify-center h-full">
               {previewMode === "ascii" ? (
-                <div className="bg-gray-900/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-800/50 shadow-2xl max-w-4xl max-h-full overflow-auto">
-                  <pre className="ascii-art leading-none select-text" style={{ ['--ascii-font-size' as any]: `${asciiFontSize}px` }}>
+                <div className={`${backgroundMode === 'light' ? 'bg-white' : 'bg-gray-900/80'} backdrop-blur-sm p-6 md:p-8 rounded-2xl border border-gray-800/50 shadow-2xl max-w-4xl max-h-full overflow-auto`}>
+                  <pre className={`ascii-art leading-none select-text ${backgroundMode === 'light' ? 'text-black' : 'text-white'}`} style={{ ['--ascii-font-size' as any]: `${asciiFontSize}px` }}>
                     {asciiArt}
                   </pre>
                 </div>
               ) : (
-                <div className="bg-gray-900/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-800/50 shadow-2xl">
+                <div className={`${backgroundMode === 'light' ? 'bg-white' : 'bg-gray-900/80'} backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-800/50 shadow-2xl`}>
                   <canvas
                     ref={outputCanvasRef}
                     className="max-w-full max-h-full rounded-lg"
