@@ -8,10 +8,12 @@ export default function AsciiConverter() {
   const [asciiArt, setAsciiArt] = useState("")
   const [loading, setLoading] = useState(false)
   const [fileName, setFileName] = useState("")
+  const [isDragging, setIsDragging] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const imageRef = useRef<HTMLImageElement | null>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
 
   const convertImageToAscii = useCallback((img: HTMLImageElement) => {
     const canvas = canvasRef.current
@@ -74,13 +76,13 @@ export default function AsciiConverter() {
 
     const reader = new FileReader()
     reader.onload = () => {
-      const img = new Image()
-      img.onload = () => {
+    const img = new Image()
+    img.onload = () => {
         imageRef.current = img
         convertImageToAscii(img)
         setLoading(false)
       }
-      img.onerror = () => {
+    img.onerror = () => {
         setLoading(false)
       }
       img.src = reader.result as string
@@ -102,48 +104,92 @@ export default function AsciiConverter() {
     fileInputRef.current?.click()
   }
 
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <h1 className="text-4xl font-bold text-black mb-8 text-center">P→Ascii</h1>
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
 
-        <div className="border border-black bg-white p-6 space-y-6">
-          <div className="border border-black bg-white p-6">
-            <div className="mb-4">
-              <button
-                onClick={triggerFileDialog}
-                className="border border-black bg-white px-6 py-3 text-black hover:bg-black hover:text-white transition-colors"
-              >
-                Add Image
-              </button>
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      handleFileSelection(file)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-3xl">
+        <h1 className="text-5xl font-bold text-neutral-900 mb-12 text-center tracking-tight">
+          P→Ascii
+            </h1>
+
+        <div className="border-2 border-neutral-900 bg-white shadow-lg">
+          <div className="p-8 space-y-8">
+            <div
+              ref={dropZoneRef}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed transition-colors ${
+                isDragging
+                  ? "border-neutral-900 bg-neutral-50"
+                  : "border-neutral-300 bg-neutral-50/50"
+              } p-8`}
+            >
+              <div className="text-center space-y-4">
+                <div>
+                  <button
+                    onClick={triggerFileDialog}
+                    className="border-2 border-neutral-900 bg-neutral-900 text-white px-8 py-3 font-medium hover:bg-neutral-800 transition-colors"
+                  >
+                    Choose Image
+                  </button>
             </div>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={onFileInputChange}
+                  onChange={onFileInputChange}
               className="hidden"
             />
-            {fileName && (
-              <p className="text-sm text-gray-600 mt-2">{fileName}</p>
-            )}
-          </div>
-
-          {loading && (
-            <div className="border border-black bg-white p-6 text-center">
-              <p className="text-sm text-gray-600">Converting...</p>
+                <p className="text-sm text-neutral-600">
+                  or drag and drop an image here
+                </p>
+                {fileName && (
+                  <p className="text-xs text-neutral-500 mt-2 font-mono">
+                    {fileName}
+                  </p>
+                )}
+              </div>
             </div>
-          )}
 
-          {asciiArt && (
-            <div className="border border-black bg-white p-6">
-              <div className="bg-black p-4 overflow-auto max-h-96">
-                <pre className="text-white text-xs font-mono leading-tight whitespace-pre">
-                  {asciiArt}
-                </pre>
+            {loading && (
+              <div className="border-2 border-neutral-200 bg-neutral-50 p-8 text-center">
+                <div className="inline-block animate-pulse">
+                  <p className="text-sm font-medium text-neutral-700">
+                    Converting to ASCII...
+                  </p>
               </div>
             </div>
           )}
+
+            {asciiArt && (
+              <div className="border-2 border-neutral-900 bg-white">
+                <div className="bg-neutral-900 p-6 overflow-auto max-h-[500px]">
+                  <pre className="text-neutral-100 text-[10px] font-mono leading-[1.2] whitespace-pre select-all">
+                    {asciiArt}
+                  </pre>
+                </div>
+                </div>
+              )}
+            </div>
         </div>
       </div>
 
