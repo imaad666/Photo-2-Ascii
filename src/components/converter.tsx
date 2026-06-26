@@ -147,9 +147,6 @@ export default function Converter() {
             <h1 className="text-2xl font-bold tracking-tight">
               P<span className="text-[var(--accent)]">→</span>Ascii
             </h1>
-            <p className="text-xs text-[var(--muted)] mt-1">
-              photo to ascii · runs locally in your browser
-            </p>
           </div>
           {status === "ready" && (
             <div className="flex gap-2 flex-wrap justify-end">
