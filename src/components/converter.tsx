@@ -278,6 +278,16 @@ export default function Converter() {
                 className="accent-[var(--accent)] w-4 h-4"
               />
             </label>
+
+            <label className="flex items-center justify-between text-xs uppercase tracking-widest text-[var(--muted)] cursor-pointer">
+              <span>dither</span>
+              <input
+                type="checkbox"
+                checked={settings.dither}
+                onChange={(e) => updateSetting("dither", e.target.checked)}
+                className="accent-[var(--accent)] w-4 h-4"
+              />
+            </label>
           </div>
         </aside>
 

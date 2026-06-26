@@ -13,6 +13,7 @@ export type AsciiSettings = {
   brightness: number;
   contrast: number;
   invert: boolean;
+  dither: boolean;
 };
 
 export const DEFAULT_SETTINGS: AsciiSettings = {
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: AsciiSettings = {
   brightness: 0,
   contrast: 1,
   invert: false,
+  dither: false,
 };
 
 /** Monospace chars are roughly twice as tall as wide */
@@ -42,11 +44,43 @@ function mapBrightness(
   return v;
 }
 
+/** Floyd–Steinberg error diffusion in charset index space */
+function ditherIndices(
+  tones: Float32Array,
+  columns: number,
+  rows: number,
+  maxIndex: number
+): Uint8Array {
+  const grid = new Float32Array(tones);
+  const indices = new Uint8Array(columns * rows);
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      const pos = y * columns + x;
+      const old = grid[pos];
+      const index = Math.round(clamp(old, 0, maxIndex));
+      indices[pos] = index;
+
+      const error = old - index;
+      if (x + 1 < columns) grid[pos + 1] += error * (7 / 16);
+      if (y + 1 < rows) {
+        const below = pos + columns;
+        if (x > 0) grid[below - 1] += error * (3 / 16);
+        grid[below] += error * (5 / 16);
+        if (x + 1 < columns) grid[below + 1] += error * (1 / 16);
+      }
+    }
+  }
+
+  return indices;
+}
+
 export function imageToAscii(
   image: HTMLImageElement,
   settings: AsciiSettings
 ): string {
   const charset = CHARSETS[settings.charset];
+  const maxIndex = charset.length - 1;
   const columns = Math.max(10, Math.round(settings.columns));
   const rows = Math.max(
     1,
@@ -63,27 +97,35 @@ export function imageToAscii(
   ctx.drawImage(image, 0, 0, columns, rows);
   const { data } = ctx.getImageData(0, 0, columns, rows);
 
-  const lines: string[] = [];
-
+  const tones = new Float32Array(columns * rows);
   for (let y = 0; y < rows; y++) {
-    let row = "";
     for (let x = 0; x < columns; x++) {
       const i = (y * columns + x) * 4;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      const mapped = mapBrightness(
+      const luminance =
+        (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
+      tones[y * columns + x] = mapBrightness(
         luminance,
         settings.brightness,
         settings.contrast,
         settings.invert
       );
-      const index = Math.min(
-        charset.length - 1,
-        Math.floor(mapped * charset.length)
-      );
-      row += charset[index];
+    }
+  }
+
+  const scaled = new Float32Array(columns * rows);
+  for (let i = 0; i < tones.length; i++) {
+    scaled[i] = tones[i] * maxIndex;
+  }
+
+  const indices = settings.dither
+    ? ditherIndices(scaled, columns, rows, maxIndex)
+    : Uint8Array.from(scaled, (v) => Math.round(clamp(v, 0, maxIndex)));
+
+  const lines: string[] = [];
+  for (let y = 0; y < rows; y++) {
+    let row = "";
+    for (let x = 0; x < columns; x++) {
+      row += charset[indices[y * columns + x]];
     }
     lines.push(row);
   }
