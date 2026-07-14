@@ -141,77 +141,71 @@ export default function Converter() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-[var(--border)] px-6 py-5">
-        <div className="max-w-7xl mx-auto flex items-baseline justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              P<span className="text-[var(--accent)]">→</span>Ascii
-            </h1>
-          </div>
-          {status === "ready" && (
-            <div className="flex gap-2 flex-wrap justify-end">
-              <button
-                onClick={handleCopy}
-                className="px-3 py-1.5 text-xs border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
-              >
-                {copied ? "copied!" : "copy"}
-              </button>
-              <button
-                onClick={() => downloadAscii(ascii, `${baseName}.txt`)}
-                className="px-3 py-1.5 text-xs border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
-              >
-                .txt
-              </button>
-              <button
-                onClick={() => downloadAsciiPng(ascii, `${baseName}.png`)}
-                className="px-3 py-1.5 text-xs bg-[var(--accent)] text-black font-medium hover:brightness-110 transition-all"
-              >
-                .png
-              </button>
-            </div>
-          )}
+      {/* Hero Header */}
+      <header className="border-b border-[var(--border)] px-6 py-8 lg:py-12">
+        <div className="max-w-7xl mx-auto text-center space-y-3">
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight">
+            Image<span className="text-[var(--accent)]">→</span>ASCII
+          </h1>
+          <p className="text-sm text-[var(--muted)] max-w-md mx-auto">
+            Transform any image into beautiful ASCII art. Upload, tune, and export in seconds — all in your browser.
+          </p>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-6 grid lg:grid-cols-[280px_1fr] gap-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 lg:py-8 grid lg:grid-cols-[320px_1fr] gap-6">
+        {/* Sidebar Controls */}
         <aside className="space-y-6">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={onDrop}
-            className={`border-2 border-dashed p-6 text-center transition-colors ${
-              isDragging
-                ? "border-[var(--accent)] bg-[var(--accent)]/5"
-                : "border-[var(--border)]"
-            }`}
-          >
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full py-2.5 text-sm border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black transition-colors"
+          {/* Upload Area */}
+          <div className="space-y-3">
+            <h2 className="text-xs uppercase tracking-widest text-[var(--muted)] font-semibold">
+              1. Upload Image
+            </h2>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={onDrop}
+              className={`border-2 border-dashed rounded-sm p-8 text-center transition-all ${
+                isDragging
+                  ? "border-[var(--accent)] bg-[var(--accent)]/10 scale-[1.02]"
+                  : "border-[var(--border)] hover:border-[var(--accent)]/50"
+              }`}
             >
-              choose image
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={onFileChange}
-              className="hidden"
-            />
-            <p className="text-[10px] text-[var(--muted)] mt-3 uppercase tracking-wider">
-              or drop here
-            </p>
-            {fileName && (
-              <p className="text-[10px] text-[var(--muted)] mt-2 truncate">
-                {fileName}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-3 text-sm font-medium border-2 border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black transition-all rounded-sm"
+              >
+                Choose Image
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                className="hidden"
+              />
+              <p className="text-[10px] text-[var(--muted)] mt-4 uppercase tracking-wider">
+                or drag & drop here
               </p>
-            )}
+              {fileName && (
+                <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                  <p className="text-[10px] text-[var(--accent)] truncate font-medium">
+                    {fileName}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-5">
+          {/* Tuning Controls */}
+          <div className="space-y-3">
+            <h2 className="text-xs uppercase tracking-widest text-[var(--muted)] font-semibold">
+              2. Tune Settings
+            </h2>
+            <div className="border border-[var(--border)] bg-[var(--surface)] rounded-sm p-5 space-y-5">
             <ControlRow label="width" value={`${settings.columns} cols`}>
               <input
                 type="range"
@@ -288,33 +282,86 @@ export default function Converter() {
                 className="accent-[var(--accent)] w-4 h-4"
               />
             </label>
+            </div>
           </div>
+
+          {/* Export Actions */}
+          {status === "ready" && (
+            <div className="space-y-3">
+              <h2 className="text-xs uppercase tracking-widest text-[var(--muted)] font-semibold">
+                3. Export
+              </h2>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="w-full px-4 py-2.5 text-sm font-medium border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all rounded-sm"
+                >
+                  {copied ? "✓ Copied!" : "Copy to Clipboard"}
+                </button>
+                <button
+                  onClick={() => downloadAscii(ascii, `${baseName}.txt`)}
+                  className="w-full px-4 py-2.5 text-sm font-medium border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all rounded-sm"
+                >
+                  Download .txt
+                </button>
+                <button
+                  onClick={() => downloadAsciiPng(ascii, `${baseName}.png`)}
+                  className="w-full px-4 py-2.5 text-sm font-medium bg-[var(--accent)] text-black hover:brightness-110 transition-all rounded-sm"
+                >
+                  Download .png
+                </button>
+              </div>
+            </div>
+          )}
         </aside>
 
-        <section className="border border-[var(--border)] bg-[var(--surface)] min-h-[400px] lg:min-h-0 flex flex-col">
+        {/* Preview Section */}
+        <section className="border border-[var(--border)] bg-[var(--surface)] rounded-sm min-h-[500px] lg:min-h-0 flex flex-col overflow-hidden">
           {status === "idle" && (
-            <div className="flex-1 flex items-center justify-center text-[var(--muted)] text-sm">
-              upload an image to begin
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
+              <svg className="w-16 h-16 text-[var(--muted)] opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <div className="space-y-2">
+                <p className="text-[var(--muted)] text-sm font-medium">No image loaded</p>
+                <p className="text-[var(--muted)] text-xs max-w-xs">
+                  Upload an image to start creating ASCII art
+                </p>
+              </div>
             </div>
           )}
 
           {status === "loading" && (
-            <div className="flex-1 flex items-center justify-center text-[var(--accent)] text-sm animate-pulse">
-              converting…
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
+              <div className="w-12 h-12 border-2 border-[var(--accent)]/20 border-t-[var(--accent)] rounded-full animate-spin" />
+              <div className="space-y-1">
+                <p className="text-[var(--accent)] text-sm font-medium animate-pulse">
+                  Converting to ASCII...
+                </p>
+                <p className="text-[var(--muted)] text-xs">This will just take a moment</p>
+              </div>
             </div>
           )}
 
           {status === "error" && (
-            <div className="flex-1 flex items-center justify-center text-red-400 text-sm">
-              failed to load image
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
+              <svg className="w-16 h-16 text-red-400 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="space-y-2">
+                <p className="text-red-400 text-sm font-medium">Failed to load image</p>
+                <p className="text-[var(--muted)] text-xs max-w-xs">
+                  Please make sure the file is a valid image format (JPG, PNG, GIF, etc.)
+                </p>
+              </div>
             </div>
           )}
 
           {status === "ready" && ascii && (
-            <div className="flex-1 overflow-hidden flex items-center justify-center p-4">
+            <div className="flex-1 overflow-hidden flex items-center justify-center p-6">
               <pre
                 ref={previewRef}
-                className="ascii-output ascii-glow select-all"
+                className="ascii-output ascii-glow select-all cursor-text"
                 style={{
                   fontSize: `${previewScale * 10}px`,
                   transformOrigin: "center center",
