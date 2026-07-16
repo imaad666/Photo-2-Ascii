@@ -16,14 +16,44 @@ export type AsciiSettings = {
   dither: boolean;
 };
 
+export type PresetKey = keyof typeof ASCII_PRESETS;
+
 export const DEFAULT_SETTINGS: AsciiSettings = {
-  columns: 100,
-  charset: "standard",
+  columns: 110,
+  charset: "detailed",
   brightness: 0,
-  contrast: 1,
+  contrast: 1.2,
   invert: false,
   dither: false,
 };
+
+export const ASCII_PRESETS = {
+  balanced: DEFAULT_SETTINGS,
+  crisp: {
+    columns: 120,
+    charset: "detailed",
+    brightness: -0.02,
+    contrast: 1.5,
+    invert: false,
+    dither: false,
+  },
+  punchy: {
+    columns: 100,
+    charset: "standard",
+    brightness: 0.08,
+    contrast: 1.8,
+    invert: false,
+    dither: true,
+  },
+  retro: {
+    columns: 90,
+    charset: "blocks",
+    brightness: 0,
+    contrast: 1.3,
+    invert: false,
+    dither: true,
+  },
+} as const satisfies Record<string, AsciiSettings>;
 
 /** Monospace chars are roughly twice as tall as wide */
 const CHAR_ASPECT = 0.5;

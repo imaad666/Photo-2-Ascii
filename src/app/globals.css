@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #080808;
-  --surface: #111111;
-  --border: #2a2a2a;
-  --text: #e8e8e8;
-  --muted: #888888;
-  --accent: #33ff66;
-  --accent-dim: #1a8033;
+  --bg: #060709;
+  --bg-elevated: #0b0f0d;
+  --surface: rgba(14, 18, 18, 0.78);
+  --surface-strong: rgba(18, 24, 22, 0.96);
+  --border: rgba(110, 132, 122, 0.22);
+  --border-strong: rgba(110, 132, 122, 0.38);
+  --text: #edf3ef;
+  --muted: #8b9791;
+  --accent: #59ffa0;
+  --accent-dim: #1f7a4a;
+  --accent-soft: rgba(89, 255, 160, 0.14);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
 * {
@@ -20,7 +25,9 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top, rgba(89, 255, 160, 0.08), transparent 30%),
+    linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
   color: var(--text);
   font-family: var(--font-geist-mono), "Courier New", Courier, monospace;
 }
@@ -70,7 +77,78 @@ input[type="range"]::-moz-range-thumb {
 
 .ascii-glow {
   color: var(--accent);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+  text-shadow:
+    0 0 10px color-mix(in srgb, var(--accent) 32%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.app-shell {
+  position: relative;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 90%);
+  opacity: 0.18;
+}
+
+.glass-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.panel-heading {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.status-pill::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.preview-frame {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 25%),
+    rgba(5, 8, 7, 0.92);
+}
+
+.preview-frame::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(89, 255, 160, 0.09);
+  pointer-events: none;
 }
 
 @keyframes scanline {

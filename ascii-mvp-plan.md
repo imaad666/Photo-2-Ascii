@@ -25,7 +25,7 @@ Build a polished client-side MVP that improves on the current ASCII image conver
   3. Introduce lightweight presets or better defaults if they materially improve first-run results.
   4. Ensure control changes continue to trigger conversion cleanly through the existing flow in [`runConversion`](src/components/converter.tsx:57).
 - **Relevant Context** — [`AsciiSettings`](src/lib/ascii.ts:10), [`DEFAULT_SETTINGS`](src/lib/ascii.ts:19), controls UI in [`src/components/converter.tsx`](src/components/converter.tsx), conversion trigger in [`runConversion`](src/components/converter.tsx:57).
-- **Status** — [ ] pending
+- **Status** — [x] done
 
 ### 3. Upgrade the conversion and preview quality
 - **Intent** — Improve the quality of generated ASCII and on-screen presentation so the output looks more intentional and competitive.

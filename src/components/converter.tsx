@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ASCII_PRESETS,
   CHARSETS,
   type AsciiSettings,
   type CharsetKey,
+  type PresetKey,
   DEFAULT_SETTINGS,
   copyAscii,
   downloadAscii,
@@ -42,6 +44,7 @@ export default function Converter() {
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey>("balanced");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -51,7 +54,18 @@ export default function Converter() {
     key: K,
     value: AsciiSettings[K]
   ) => {
+    setSelectedPreset("balanced");
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const applyPreset = (preset: PresetKey) => {
+    setSelectedPreset(preset);
+    setSettings({ ...ASCII_PRESETS[preset] });
+  };
+
+  const resetSettings = () => {
+    setSelectedPreset("balanced");
+    setSettings({ ...DEFAULT_SETTINGS });
   };
 
   const runConversion = useCallback(() => {
@@ -202,86 +216,137 @@ export default function Converter() {
 
           {/* Tuning Controls */}
           <div className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-[var(--muted)] font-semibold">
-              2. Tune Settings
-            </h2>
-            <div className="border border-[var(--border)] bg-[var(--surface)] rounded-sm p-5 space-y-5">
-            <ControlRow label="width" value={`${settings.columns} cols`}>
-              <input
-                type="range"
-                min={30}
-                max={200}
-                value={settings.columns}
-                onChange={(e) =>
-                  updateSetting("columns", Number(e.target.value))
-                }
-              />
-            </ControlRow>
-
-            <ControlRow label="charset" value={settings.charset}>
-              <select
-                value={settings.charset}
-                onChange={(e) =>
-                  updateSetting("charset", e.target.value as CharsetKey)
-                }
-                className="w-full bg-[var(--bg)] border border-[var(--border)] px-2 py-1.5 text-xs outline-none focus:border-[var(--accent)]"
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xs uppercase tracking-widest text-[var(--muted)] font-semibold">
+                2. Tune Settings
+              </h2>
+              <button
+                type="button"
+                onClick={resetSettings}
+                className="text-[10px] uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
               >
-                {(Object.keys(CHARSETS) as CharsetKey[]).map((key) => (
-                  <option key={key} value={key}>
-                    {key}
-                  </option>
-                ))}
-              </select>
-            </ControlRow>
+                Reset
+              </button>
+            </div>
 
-            <ControlRow label="contrast" value={settings.contrast.toFixed(1)}>
-              <input
-                type="range"
-                min={0.5}
-                max={3}
-                step={0.1}
-                value={settings.contrast}
-                onChange={(e) =>
-                  updateSetting("contrast", Number(e.target.value))
-                }
-              />
-            </ControlRow>
+            <div className="border border-[var(--border)] bg-[var(--surface)] rounded-sm p-5 space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs uppercase tracking-widest text-[var(--muted)]">
+                  <span>presets</span>
+                  <span className="text-[var(--accent)]">{selectedPreset}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(ASCII_PRESETS) as PresetKey[]).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => applyPreset(preset)}
+                      className={`px-3 py-2 text-xs uppercase tracking-widest border rounded-sm transition-all ${
+                        selectedPreset === preset
+                          ? "border-[var(--accent)] bg-[var(--accent)] text-black"
+                          : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            <ControlRow
-              label="brightness"
-              value={settings.brightness.toFixed(2)}
-            >
-              <input
-                type="range"
-                min={-0.5}
-                max={0.5}
-                step={0.05}
-                value={settings.brightness}
-                onChange={(e) =>
-                  updateSetting("brightness", Number(e.target.value))
-                }
-              />
-            </ControlRow>
+              <div className="space-y-5 border-t border-[var(--border)] pt-5">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Core detail
+                </p>
 
-            <label className="flex items-center justify-between text-xs uppercase tracking-widest text-[var(--muted)] cursor-pointer">
-              <span>invert</span>
-              <input
-                type="checkbox"
-                checked={settings.invert}
-                onChange={(e) => updateSetting("invert", e.target.checked)}
-                className="accent-[var(--accent)] w-4 h-4"
-              />
-            </label>
+                <ControlRow label="width" value={`${settings.columns} cols`}>
+                  <input
+                    type="range"
+                    min={30}
+                    max={200}
+                    value={settings.columns}
+                    onChange={(e) =>
+                      updateSetting("columns", Number(e.target.value))
+                    }
+                  />
+                </ControlRow>
 
-            <label className="flex items-center justify-between text-xs uppercase tracking-widest text-[var(--muted)] cursor-pointer">
-              <span>dither</span>
-              <input
-                type="checkbox"
-                checked={settings.dither}
-                onChange={(e) => updateSetting("dither", e.target.checked)}
-                className="accent-[var(--accent)] w-4 h-4"
-              />
-            </label>
+                <ControlRow label="charset" value={settings.charset}>
+                  <select
+                    value={settings.charset}
+                    onChange={(e) =>
+                      updateSetting("charset", e.target.value as CharsetKey)
+                    }
+                    className="w-full bg-[var(--bg)] border border-[var(--border)] px-2 py-2 text-xs outline-none focus:border-[var(--accent)] rounded-sm"
+                  >
+                    {(Object.keys(CHARSETS) as CharsetKey[]).map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                </ControlRow>
+              </div>
+
+              <div className="space-y-5 border-t border-[var(--border)] pt-5">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Tone shaping
+                </p>
+
+                <ControlRow label="contrast" value={settings.contrast.toFixed(1)}>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={3}
+                    step={0.1}
+                    value={settings.contrast}
+                    onChange={(e) =>
+                      updateSetting("contrast", Number(e.target.value))
+                    }
+                  />
+                </ControlRow>
+
+                <ControlRow
+                  label="brightness"
+                  value={settings.brightness.toFixed(2)}
+                >
+                  <input
+                    type="range"
+                    min={-0.5}
+                    max={0.5}
+                    step={0.05}
+                    value={settings.brightness}
+                    onChange={(e) =>
+                      updateSetting("brightness", Number(e.target.value))
+                    }
+                  />
+                </ControlRow>
+              </div>
+
+              <div className="space-y-4 border-t border-[var(--border)] pt-5">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Effects
+                </p>
+
+                <label className="flex items-center justify-between text-xs uppercase tracking-widest text-[var(--muted)] cursor-pointer">
+                  <span>invert</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.invert}
+                    onChange={(e) => updateSetting("invert", e.target.checked)}
+                    className="accent-[var(--accent)] w-4 h-4"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between text-xs uppercase tracking-widest text-[var(--muted)] cursor-pointer">
+                  <span>dither</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.dither}
+                    onChange={(e) => updateSetting("dither", e.target.checked)}
+                    className="accent-[var(--accent)] w-4 h-4"
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
