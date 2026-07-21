@@ -1,17 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ASCII_PRESETS,
   CHARSETS,
+  COLOR_PALETTES,
+  DEFAULT_THEME,
+  type AsciiRenderData,
   type AsciiSettings,
+  type AsciiTheme,
   type CharsetKey,
+  type PalettePresetKey,
   type PresetKey,
   DEFAULT_SETTINGS,
   copyAscii,
   downloadAscii,
   downloadAsciiPng,
-  imageToAscii,
+  imageToAsciiRenderData,
 } from "@/lib/ascii";
 
 type Status = "idle" | "loading" | "ready" | "error";
@@ -47,19 +52,61 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function toggleStyle(active: boolean) {
+  return {
+    width: 36,
+    height: 18,
+    borderRadius: 999,
+    background: active ? "var(--accent-soft)" : "transparent",
+    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+    cursor: "pointer",
+    position: "relative" as const,
+    transition: "all 160ms ease",
+  };
+}
+
+function knobStyle(active: boolean) {
+  return {
+    width: 12,
+    height: 12,
+    borderRadius: "50%",
+    background: active ? "var(--accent)" : "var(--muted)",
+    left: active ? 20 : 2,
+    top: 2,
+    boxShadow: active ? "0 0 8px var(--accent)" : "none",
+    position: "absolute" as const,
+    transition: "all 160ms ease",
+  };
+}
+
 export default function Converter() {
   const [settings, setSettings] = useState<AsciiSettings>(DEFAULT_SETTINGS);
-  const [ascii, setAscii] = useState("");
+  const [theme, setTheme] = useState<AsciiTheme>(DEFAULT_THEME);
+  const [renderData, setRenderData] = useState<AsciiRenderData | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [fileName, setFileName] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>("balanced");
+  const [selectedPalette, setSelectedPalette] =
+    useState<PalettePresetKey>("terminal");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const previewRef = useRef<HTMLPreElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const ascii = renderData?.ascii ?? "";
+
+  const asciiRows = useMemo(() => {
+    if (!renderData) return [];
+    return Array.from({ length: renderData.rows }, (_, rowIndex) =>
+      renderData.cells.slice(
+        rowIndex * renderData.columns,
+        (rowIndex + 1) * renderData.columns
+      )
+    );
+  }, [renderData]);
 
   const updateSetting = <K extends keyof AsciiSettings>(
     key: K,
@@ -69,22 +116,52 @@ export default function Converter() {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updateTheme = <K extends keyof AsciiTheme>(
+    key: K,
+    value: AsciiTheme[K]
+  ) => {
+    setTheme((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const updatePaletteColor = (index: number, color: string) => {
+    setTheme((prev) => ({
+      ...prev,
+      palette: prev.palette.map((value, paletteIndex) =>
+        paletteIndex === index ? color : value
+      ),
+    }));
+  };
+
   const applyPreset = (preset: PresetKey) => {
     setSelectedPreset(preset);
     setSettings({ ...ASCII_PRESETS[preset] });
   };
 
+  const applyPalettePreset = (paletteKey: PalettePresetKey) => {
+    setSelectedPalette(paletteKey);
+    setTheme((prev) => ({
+      ...prev,
+      palette: [...COLOR_PALETTES[paletteKey]],
+      foreground: COLOR_PALETTES[paletteKey][0],
+    }));
+  };
+
   const resetSettings = () => {
     setSelectedPreset("balanced");
+    setSelectedPalette("terminal");
     setSettings({ ...DEFAULT_SETTINGS });
+    setTheme({
+      ...DEFAULT_THEME,
+      palette: [...DEFAULT_THEME.palette],
+    });
   };
 
   const runConversion = useCallback(() => {
     const img = imageRef.current;
     if (!img) return;
-    setAscii(imageToAscii(img, settings));
+    setRenderData(imageToAsciiRenderData(img, settings, theme));
     setStatus("ready");
-  }, [settings]);
+  }, [settings, theme]);
 
   useEffect(() => {
     if (imageRef.current) {
@@ -94,17 +171,13 @@ export default function Converter() {
 
   useEffect(() => {
     const el = previewRef.current;
-    if (!el || !ascii) return;
+    if (!el || !renderData) return;
 
     const fit = () => {
       const parent = el.parentElement;
       if (!parent) return;
-      const cols = ascii.split("\n")[0]?.length ?? 1;
-      const rows = ascii.split("\n").length;
-      const charW = 6;
-      const charH = 10;
-      const contentW = cols * charW;
-      const contentH = rows * charH;
+      const contentW = renderData.columns * 6;
+      const contentH = renderData.rows * 10;
       const scale = Math.min(
         1,
         (parent.clientWidth - 48) / contentW,
@@ -116,7 +189,7 @@ export default function Converter() {
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [ascii]);
+  }, [renderData]);
 
   const loadFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -126,14 +199,14 @@ export default function Converter() {
 
     setFileName(file.name);
     setStatus("loading");
-    setAscii("");
+    setRenderData(null);
 
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
         imageRef.current = img;
-        setAscii(imageToAscii(img, settings));
+        setRenderData(imageToAsciiRenderData(img, settings, theme));
         setStatus("ready");
       };
       img.onerror = () => setStatus("error");
@@ -166,13 +239,11 @@ export default function Converter() {
 
   return (
     <div className="app-shell min-h-screen flex flex-col">
-      {/* ── Header ── */}
       <header
         className="relative z-10 px-6 py-7"
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
-          {/* Brand */}
           <div className="flex items-baseline gap-3">
             <h1
               className="text-2xl font-bold tracking-tight"
@@ -190,13 +261,10 @@ export default function Converter() {
             </span>
           </div>
 
-          {/* Status + export actions */}
           <div className="flex items-center gap-3">
-            {status === "ready" && (
+            {status === "ready" && renderData && (
               <>
-                <span className="status-pill hidden sm:inline-flex">
-                  ready
-                </span>
+                <span className="status-pill hidden sm:inline-flex">ready</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleCopy}
@@ -220,24 +288,12 @@ export default function Converter() {
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
                     }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor =
-                        "var(--accent)";
-                      (e.currentTarget as HTMLButtonElement).style.color =
-                        "var(--accent)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor =
-                        "var(--border)";
-                      (e.currentTarget as HTMLButtonElement).style.color =
-                        "var(--muted)";
-                    }}
                   >
                     .txt
                   </button>
                   <button
                     onClick={() =>
-                      downloadAsciiPng(ascii, `${baseName}.png`)
+                      downloadAsciiPng(renderData, theme, `${baseName}.png`)
                     }
                     className="px-3 py-1.5 text-xs font-semibold transition-all"
                     style={{
@@ -245,13 +301,6 @@ export default function Converter() {
                       color: "#020a04",
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.filter =
-                        "brightness(1.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.filter = "";
                     }}
                   >
                     .png
@@ -263,13 +312,8 @@ export default function Converter() {
         </div>
       </header>
 
-      {/* ── Main layout ── */}
-      <main className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 lg:py-8 grid lg:grid-cols-[300px_1fr] gap-5 lg:gap-6">
-
-        {/* ── Sidebar ── */}
+      <main className="relative z-10 flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 lg:py-8 grid lg:grid-cols-[320px_1fr] gap-5 lg:gap-6">
         <aside className="flex flex-col gap-5">
-
-          {/* Upload */}
           <div>
             <div
               className="panel-heading mb-3"
@@ -278,55 +322,105 @@ export default function Converter() {
               01 — image
             </div>
             <div
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={onDrop}
               onClick={() => fileInputRef.current?.click()}
               className="cursor-pointer relative overflow-hidden transition-all"
               style={{
-                border: `2px dashed ${isDragging ? "var(--accent)" : "var(--border)"}`,
+                border: `2px dashed ${
+                  isDragging ? "var(--accent)" : "var(--border)"
+                }`,
                 background: isDragging ? "var(--accent-soft)" : "transparent",
                 padding: "28px 20px",
                 textAlign: "center",
               }}
             >
-              {/* Corner decorations */}
               <span
                 className="absolute top-0 left-0"
-                style={{ width: 12, height: 12, borderTop: "2px solid var(--accent)", borderLeft: "2px solid var(--accent)", opacity: isDragging ? 1 : 0.5 }}
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderTop: "2px solid var(--accent)",
+                  borderLeft: "2px solid var(--accent)",
+                  opacity: isDragging ? 1 : 0.5,
+                }}
               />
               <span
                 className="absolute top-0 right-0"
-                style={{ width: 12, height: 12, borderTop: "2px solid var(--accent)", borderRight: "2px solid var(--accent)", opacity: isDragging ? 1 : 0.5 }}
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderTop: "2px solid var(--accent)",
+                  borderRight: "2px solid var(--accent)",
+                  opacity: isDragging ? 1 : 0.5,
+                }}
               />
               <span
                 className="absolute bottom-0 left-0"
-                style={{ width: 12, height: 12, borderBottom: "2px solid var(--accent)", borderLeft: "2px solid var(--accent)", opacity: isDragging ? 1 : 0.5 }}
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderBottom: "2px solid var(--accent)",
+                  borderLeft: "2px solid var(--accent)",
+                  opacity: isDragging ? 1 : 0.5,
+                }}
               />
               <span
                 className="absolute bottom-0 right-0"
-                style={{ width: 12, height: 12, borderBottom: "2px solid var(--accent)", borderRight: "2px solid var(--accent)", opacity: isDragging ? 1 : 0.5 }}
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderBottom: "2px solid var(--accent)",
+                  borderRight: "2px solid var(--accent)",
+                  opacity: isDragging ? 1 : 0.5,
+                }}
               />
 
               <svg
                 className="mx-auto mb-3"
-                style={{ width: 28, height: 28, color: isDragging ? "var(--accent)" : "var(--muted)", opacity: isDragging ? 1 : 0.5 }}
+                style={{
+                  width: 28,
+                  height: 28,
+                  color: isDragging ? "var(--accent)" : "var(--muted)",
+                  opacity: isDragging ? 1 : 0.5,
+                }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-8m-4 4l4-4 4 4M4 20h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 16v-8m-4 4l4-4 4 4M4 20h16"
+                />
               </svg>
               <p
                 className="text-xs"
-                style={{ color: isDragging ? "var(--accent)" : "var(--muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}
+                style={{
+                  color: isDragging ? "var(--accent)" : "var(--muted)",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                }}
               >
-                {isDragging ? "release to convert" : fileName ? fileName : "drop or click to upload"}
+                {isDragging
+                  ? "release to convert"
+                  : fileName
+                    ? fileName
+                    : "drop or click to upload"}
               </p>
               {fileName && !isDragging && (
                 <p
                   className="mt-2 text-xs"
-                  style={{ color: "var(--accent)", opacity: 0.8, letterSpacing: "0.08em" }}
+                  style={{
+                    color: "var(--accent)",
+                    opacity: 0.8,
+                    letterSpacing: "0.08em",
+                  }}
                 >
                   ↑ click to change
                 </p>
@@ -341,7 +435,6 @@ export default function Converter() {
             </div>
           </div>
 
-          {/* Settings panel */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="panel-heading" style={{ color: "var(--muted)" }}>
@@ -352,21 +445,12 @@ export default function Converter() {
                 onClick={resetSettings}
                 className="panel-heading transition-colors"
                 style={{ color: "var(--muted)", opacity: 0.6 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
-                  (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
-                  (e.currentTarget as HTMLButtonElement).style.opacity = "0.6";
-                }}
               >
                 reset ↺
               </button>
             </div>
 
             <div className="glass-panel p-5 flex flex-col gap-6">
-              {/* Presets */}
               <div className="space-y-3">
                 <SectionLabel>preset</SectionLabel>
                 <div className="grid grid-cols-2 gap-2">
@@ -379,8 +463,12 @@ export default function Converter() {
                         onClick={() => applyPreset(preset)}
                         className="py-2 text-xs transition-all"
                         style={{
-                          border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                          background: active ? "var(--accent-soft)" : "transparent",
+                          border: `1px solid ${
+                            active ? "var(--accent)" : "var(--border)"
+                          }`,
+                          background: active
+                            ? "var(--accent-soft)"
+                            : "transparent",
                           color: active ? "var(--accent)" : "var(--muted)",
                           letterSpacing: "0.14em",
                           textTransform: "uppercase",
@@ -393,7 +481,6 @@ export default function Converter() {
                 </div>
               </div>
 
-              {/* Core detail */}
               <div
                 className="flex flex-col gap-5"
                 style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}
@@ -406,14 +493,18 @@ export default function Converter() {
                     min={30}
                     max={200}
                     value={settings.columns}
-                    onChange={(e) => updateSetting("columns", Number(e.target.value))}
+                    onChange={(e) =>
+                      updateSetting("columns", Number(e.target.value))
+                    }
                   />
                 </ControlRow>
 
                 <ControlRow label="charset" value={settings.charset}>
                   <select
                     value={settings.charset}
-                    onChange={(e) => updateSetting("charset", e.target.value as CharsetKey)}
+                    onChange={(e) =>
+                      updateSetting("charset", e.target.value as CharsetKey)
+                    }
                     className="w-full text-xs outline-none"
                     style={{
                       background: "var(--bg)",
@@ -423,43 +514,53 @@ export default function Converter() {
                     }}
                   >
                     {(Object.keys(CHARSETS) as CharsetKey[]).map((key) => (
-                      <option key={key} value={key}>{key}</option>
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
                     ))}
                   </select>
                 </ControlRow>
               </div>
 
-              {/* Tone shaping */}
               <div
                 className="flex flex-col gap-5"
                 style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}
               >
                 <SectionLabel>tone</SectionLabel>
 
-                <ControlRow label="contrast" value={settings.contrast.toFixed(1)}>
+                <ControlRow
+                  label="contrast"
+                  value={settings.contrast.toFixed(1)}
+                >
                   <input
                     type="range"
                     min={0.5}
                     max={3}
                     step={0.1}
                     value={settings.contrast}
-                    onChange={(e) => updateSetting("contrast", Number(e.target.value))}
+                    onChange={(e) =>
+                      updateSetting("contrast", Number(e.target.value))
+                    }
                   />
                 </ControlRow>
 
-                <ControlRow label="brightness" value={settings.brightness.toFixed(2)}>
+                <ControlRow
+                  label="brightness"
+                  value={settings.brightness.toFixed(2)}
+                >
                   <input
                     type="range"
                     min={-0.5}
                     max={0.5}
                     step={0.05}
                     value={settings.brightness}
-                    onChange={(e) => updateSetting("brightness", Number(e.target.value))}
+                    onChange={(e) =>
+                      updateSetting("brightness", Number(e.target.value))
+                    }
                   />
                 </ControlRow>
               </div>
 
-              {/* Effects */}
               <div
                 className="flex flex-col gap-4"
                 style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}
@@ -468,71 +569,145 @@ export default function Converter() {
 
                 <label
                   className="flex items-center justify-between text-xs cursor-pointer"
-                  style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)" }}
+                  style={{
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--muted)",
+                  }}
                 >
                   <span>invert</span>
                   <div
                     onClick={() => updateSetting("invert", !settings.invert)}
-                    className="relative transition-all"
-                    style={{
-                      width: 36,
-                      height: 18,
-                      borderRadius: 999,
-                      background: settings.invert ? "var(--accent-soft)" : "transparent",
-                      border: `1px solid ${settings.invert ? "var(--accent)" : "var(--border)"}`,
-                      cursor: "pointer",
-                    }}
+                    style={toggleStyle(settings.invert)}
                   >
-                    <span
-                      className="absolute top-0.5 transition-all"
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: "50%",
-                        background: settings.invert ? "var(--accent)" : "var(--muted)",
-                        left: settings.invert ? 20 : 2,
-                        boxShadow: settings.invert ? "0 0 8px var(--accent)" : "none",
-                      }}
-                    />
+                    <span style={knobStyle(settings.invert)} />
                   </div>
                 </label>
 
                 <label
                   className="flex items-center justify-between text-xs cursor-pointer"
-                  style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)" }}
+                  style={{
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--muted)",
+                  }}
                 >
                   <span>dither</span>
                   <div
                     onClick={() => updateSetting("dither", !settings.dither)}
-                    className="relative transition-all"
-                    style={{
-                      width: 36,
-                      height: 18,
-                      borderRadius: 999,
-                      background: settings.dither ? "var(--accent-soft)" : "transparent",
-                      border: `1px solid ${settings.dither ? "var(--accent)" : "var(--border)"}`,
-                      cursor: "pointer",
-                    }}
+                    style={toggleStyle(settings.dither)}
                   >
-                    <span
-                      className="absolute top-0.5 transition-all"
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: "50%",
-                        background: settings.dither ? "var(--accent)" : "var(--muted)",
-                        left: settings.dither ? 20 : 2,
-                        boxShadow: settings.dither ? "0 0 8px var(--accent)" : "none",
-                      }}
-                    />
+                    <span style={knobStyle(settings.dither)} />
                   </div>
                 </label>
+              </div>
+
+              <div
+                className="flex flex-col gap-5"
+                style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}
+              >
+                <SectionLabel>color</SectionLabel>
+
+                <ControlRow label="mode" value={theme.mode}>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["mono", "palette"] as const).map((mode) => {
+                      const active = theme.mode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => updateTheme("mode", mode)}
+                          className="py-2 text-xs transition-all"
+                          style={{
+                            border: `1px solid ${
+                              active ? "var(--accent)" : "var(--border)"
+                            }`,
+                            background: active
+                              ? "var(--accent-soft)"
+                              : "transparent",
+                            color: active ? "var(--accent)" : "var(--muted)",
+                            letterSpacing: "0.14em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {mode}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ControlRow>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="space-y-2">
+                    <span className="panel-heading">text</span>
+                    <input
+                      type="color"
+                      value={theme.foreground}
+                      onChange={(e) => updateTheme("foreground", e.target.value)}
+                      className="w-full h-10 bg-transparent border-0 cursor-pointer"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="panel-heading">background</span>
+                    <input
+                      type="color"
+                      value={theme.background}
+                      onChange={(e) => updateTheme("background", e.target.value)}
+                      className="w-full h-10 bg-transparent border-0 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {theme.mode === "palette" && (
+                  <>
+                    <ControlRow label="palette" value={selectedPalette}>
+                      <select
+                        value={selectedPalette}
+                        onChange={(e) =>
+                          applyPalettePreset(
+                            e.target.value as PalettePresetKey
+                          )
+                        }
+                        className="w-full text-xs outline-none"
+                        style={{
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          color: "var(--text)",
+                          padding: "7px 8px",
+                        }}
+                      >
+                        {(Object.keys(COLOR_PALETTES) as PalettePresetKey[]).map(
+                          (paletteKey) => (
+                            <option key={paletteKey} value={paletteKey}>
+                              {paletteKey}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </ControlRow>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      {theme.palette.map((color, index) => (
+                        <label key={`${color}-${index}`} className="space-y-2">
+                          <span className="panel-heading">c{index + 1}</span>
+                          <input
+                            type="color"
+                            value={color}
+                            onChange={(e) =>
+                              updatePaletteColor(index, e.target.value)
+                            }
+                            className="w-full h-10 bg-transparent border-0 cursor-pointer"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </aside>
 
-        {/* ── Preview ── */}
         <section className="flex flex-col gap-0" style={{ minHeight: 520 }}>
           <div
             className="panel-heading mb-3"
@@ -548,9 +723,8 @@ export default function Converter() {
 
           <div
             className="preview-frame glass-panel flex-1 flex flex-col overflow-hidden"
-            style={{ minHeight: 480 }}
+            style={{ minHeight: 480, background: theme.background }}
           >
-            {/* idle */}
             {status === "idle" && (
               <div className="flex-1 flex flex-col items-center justify-center gap-5 p-10 text-center">
                 <div
@@ -587,7 +761,6 @@ export default function Converter() {
               </div>
             )}
 
-            {/* loading */}
             {status === "loading" && (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 p-10">
                 <div
@@ -602,46 +775,74 @@ export default function Converter() {
                 />
                 <p
                   className="text-xs animate-pulse"
-                  style={{ color: "var(--accent)", letterSpacing: "0.18em", textTransform: "uppercase" }}
+                  style={{
+                    color: "var(--accent)",
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                  }}
                 >
                   converting
                 </p>
               </div>
             )}
 
-            {/* error */}
             {status === "error" && (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 p-10 text-center">
                 <svg
-                  style={{ width: 40, height: 40, color: "#f87171", opacity: 0.7 }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    color: "#f87171",
+                    opacity: 0.7,
+                  }}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                  />
                 </svg>
                 <div className="space-y-1">
-                  <p className="text-sm" style={{ color: "#f87171" }}>failed to load image</p>
-                  <p className="text-xs" style={{ color: "var(--muted)", opacity: 0.6 }}>
+                  <p className="text-sm" style={{ color: "#f87171" }}>
+                    failed to load image
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--muted)", opacity: 0.6 }}
+                  >
                     use a valid image file (jpg, png, gif, webp…)
                   </p>
                 </div>
               </div>
             )}
 
-            {/* ready */}
-            {status === "ready" && ascii && (
+            {status === "ready" && renderData && (
               <div className="flex-1 overflow-hidden flex items-center justify-center p-6">
-                <pre
+                <div
                   ref={previewRef}
-                  className="ascii-output ascii-glow select-all cursor-text"
+                  className="ascii-output select-all cursor-text"
                   style={{
                     fontSize: `${previewScale * 10}px`,
                     transformOrigin: "center center",
+                    lineHeight: 1,
+                    background: theme.background,
+                    color: theme.foreground,
                   }}
                 >
-                  {ascii}
-                </pre>
+                  {asciiRows.map((row, rowIndex) => (
+                    <div key={rowIndex} style={{ height: `${previewScale * 10}px` }}>
+                      {row.map((cell, cellIndex) => (
+                        <span key={`${rowIndex}-${cellIndex}`} style={{ color: cell.color }}>
+                          {cell.char}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

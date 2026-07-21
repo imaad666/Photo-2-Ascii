@@ -1,6 +1,7 @@
 export const CHARSETS = {
   standard: " .:-=+*#%@",
-  detailed: " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  detailed:
+    " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
   blocks: " ░▒▓█",
   minimal: " .:#",
 } as const;
@@ -16,6 +17,16 @@ export type AsciiSettings = {
   dither: boolean;
 };
 
+export type ColorMode = "mono" | "palette";
+
+export type AsciiTheme = {
+  mode: ColorMode;
+  foreground: string;
+  background: string;
+  palette: string[];
+};
+
+export type PalettePresetKey = keyof typeof COLOR_PALETTES;
 export type PresetKey = keyof typeof ASCII_PRESETS;
 
 export const DEFAULT_SETTINGS: AsciiSettings = {
@@ -25,6 +36,13 @@ export const DEFAULT_SETTINGS: AsciiSettings = {
   contrast: 1.2,
   invert: false,
   dither: false,
+};
+
+export const DEFAULT_THEME: AsciiTheme = {
+  mode: "mono",
+  foreground: "#59ffa0",
+  background: "#050807",
+  palette: ["#59ffa0", "#c8ffe2"],
 };
 
 export const ASCII_PRESETS = {
@@ -55,6 +73,27 @@ export const ASCII_PRESETS = {
   },
 } as const satisfies Record<string, AsciiSettings>;
 
+export const COLOR_PALETTES = {
+  terminal: ["#2ee66b", "#7dffb0", "#d7ffe8"],
+  amber: ["#ff9a1f", "#ffc15a", "#ffe1a8"],
+  synthwave: ["#ff4fd8", "#9d7dff", "#71e5ff"],
+  ice: ["#7fe7ff", "#b9f2ff", "#effcff"],
+  fire: ["#ff5a36", "#ff9d2d", "#ffe066"],
+} as const satisfies Record<string, readonly string[]>;
+
+export type AsciiRenderCell = {
+  char: string;
+  tone: number;
+  color: string;
+};
+
+export type AsciiRenderData = {
+  ascii: string;
+  columns: number;
+  rows: number;
+  cells: AsciiRenderCell[];
+};
+
 /** Monospace chars are roughly twice as tall as wide */
 const CHAR_ASPECT = 0.5;
 
@@ -72,6 +111,21 @@ function mapBrightness(
   v = clamp(v, 0, 1);
   if (invert) v = 1 - v;
   return v;
+}
+
+function normalizePalette(palette: string[]) {
+  return palette.filter(Boolean).slice(0, 5);
+}
+
+function getToneColor(tone: number, theme: AsciiTheme) {
+  if (theme.mode === "mono") return theme.foreground;
+
+  const palette = normalizePalette(theme.palette);
+  if (palette.length === 0) return theme.foreground;
+  if (palette.length === 1) return palette[0];
+
+  const index = Math.round(clamp(tone, 0, 1) * (palette.length - 1));
+  return palette[index];
 }
 
 /** Floyd–Steinberg error diffusion in charset index space */
@@ -109,6 +163,14 @@ export function imageToAscii(
   image: HTMLImageElement,
   settings: AsciiSettings
 ): string {
+  return imageToAsciiRenderData(image, settings, DEFAULT_THEME).ascii;
+}
+
+export function imageToAsciiRenderData(
+  image: HTMLImageElement,
+  settings: AsciiSettings,
+  theme: AsciiTheme
+): AsciiRenderData {
   const charset = CHARSETS[settings.charset];
   const maxIndex = charset.length - 1;
   const columns = Math.max(10, Math.round(settings.columns));
@@ -122,7 +184,9 @@ export function imageToAscii(
   canvas.height = rows;
 
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return "";
+  if (!ctx) {
+    return { ascii: "", columns, rows, cells: [] };
+  }
 
   ctx.drawImage(image, 0, 0, columns, rows);
   const { data } = ctx.getImageData(0, 0, columns, rows);
@@ -152,15 +216,26 @@ export function imageToAscii(
     : Uint8Array.from(scaled, (v) => Math.round(clamp(v, 0, maxIndex)));
 
   const lines: string[] = [];
+  const cells: AsciiRenderCell[] = [];
+
   for (let y = 0; y < rows; y++) {
     let row = "";
     for (let x = 0; x < columns; x++) {
-      row += charset[indices[y * columns + x]];
+      const position = y * columns + x;
+      const tone = tones[position];
+      const char = charset[indices[position]];
+      row += char;
+      cells.push({ char, tone, color: getToneColor(tone, theme) });
     }
     lines.push(row);
   }
 
-  return lines.join("\n");
+  return {
+    ascii: lines.join("\n"),
+    columns,
+    rows,
+    cells,
+  };
 }
 
 export function asciiToBlob(ascii: string): Blob {
@@ -181,42 +256,44 @@ export async function copyAscii(ascii: string) {
 }
 
 export function renderAsciiToCanvas(
-  ascii: string,
-  options: { fontSize?: number; color?: string; background?: string } = {}
+  renderData: AsciiRenderData,
+  theme: AsciiTheme,
+  options: { fontSize?: number } = {}
 ): HTMLCanvasElement {
   const fontSize = options.fontSize ?? 10;
-  const color = options.color ?? "#33ff66";
-  const background = options.background ?? "#0a0a0a";
-
-  const lines = ascii.split("\n");
-  const cols = lines.reduce((max, line) => Math.max(max, line.length), 0);
-  const rows = lines.length;
-
   const canvas = document.createElement("canvas");
   const charWidth = fontSize * 0.6;
   const charHeight = fontSize * 1.2;
 
-  canvas.width = Math.ceil(cols * charWidth);
-  canvas.height = Math.ceil(rows * charHeight);
+  canvas.width = Math.ceil(renderData.columns * charWidth);
+  canvas.height = Math.ceil(renderData.rows * charHeight);
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  ctx.fillStyle = background;
+  ctx.fillStyle = theme.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = color;
   ctx.font = `${fontSize}px "Courier New", Courier, monospace`;
   ctx.textBaseline = "top";
 
-  for (let y = 0; y < lines.length; y++) {
-    ctx.fillText(lines[y], 0, y * charHeight);
+  for (let y = 0; y < renderData.rows; y++) {
+    for (let x = 0; x < renderData.columns; x++) {
+      const cell = renderData.cells[y * renderData.columns + x];
+      if (!cell || cell.char === " ") continue;
+      ctx.fillStyle = cell.color;
+      ctx.fillText(cell.char, x * charWidth, y * charHeight);
+    }
   }
 
   return canvas;
 }
 
-export function downloadAsciiPng(ascii: string, filename = "ascii-art.png") {
-  const canvas = renderAsciiToCanvas(ascii);
+export function downloadAsciiPng(
+  renderData: AsciiRenderData,
+  theme: AsciiTheme,
+  filename = "ascii-art.png"
+) {
+  const canvas = renderAsciiToCanvas(renderData, theme);
   canvas.toBlob((blob) => {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
