@@ -559,6 +559,57 @@ export default function Converter() {
                     }
                   />
                 </ControlRow>
+
+                <ControlRow label="gamma" value={settings.gamma.toFixed(2)}>
+                  <input
+                    type="range"
+                    min={0.4}
+                    max={2.2}
+                    step={0.05}
+                    value={settings.gamma}
+                    onChange={(e) =>
+                      updateSetting("gamma", Number(e.target.value))
+                    }
+                  />
+                </ControlRow>
+
+                <ControlRow
+                  label="black point"
+                  value={settings.blackPoint.toFixed(2)}
+                >
+                  <input
+                    type="range"
+                    min={0}
+                    max={0.45}
+                    step={0.01}
+                    value={settings.blackPoint}
+                    onChange={(e) =>
+                      updateSetting(
+                        "blackPoint",
+                        Math.min(Number(e.target.value), settings.whitePoint - 0.01)
+                      )
+                    }
+                  />
+                </ControlRow>
+
+                <ControlRow
+                  label="white point"
+                  value={settings.whitePoint.toFixed(2)}
+                >
+                  <input
+                    type="range"
+                    min={0.55}
+                    max={1}
+                    step={0.01}
+                    value={settings.whitePoint}
+                    onChange={(e) =>
+                      updateSetting(
+                        "whitePoint",
+                        Math.max(Number(e.target.value), settings.blackPoint + 0.01)
+                      )
+                    }
+                  />
+                </ControlRow>
               </div>
 
               <div
