@@ -13,6 +13,9 @@ export type AsciiSettings = {
   charset: CharsetKey;
   brightness: number;
   contrast: number;
+  gamma: number;
+  blackPoint: number;
+  whitePoint: number;
   invert: boolean;
   dither: boolean;
 };
@@ -34,6 +37,9 @@ export const DEFAULT_SETTINGS: AsciiSettings = {
   charset: "detailed",
   brightness: 0,
   contrast: 1.2,
+  gamma: 1,
+  blackPoint: 0.06,
+  whitePoint: 0.94,
   invert: false,
   dither: false,
 };
@@ -52,6 +58,9 @@ export const ASCII_PRESETS = {
     charset: "detailed",
     brightness: -0.02,
     contrast: 1.5,
+    gamma: 0.95,
+    blackPoint: 0.05,
+    whitePoint: 0.96,
     invert: false,
     dither: false,
   },
@@ -60,6 +69,9 @@ export const ASCII_PRESETS = {
     charset: "standard",
     brightness: 0.08,
     contrast: 1.8,
+    gamma: 0.9,
+    blackPoint: 0.08,
+    whitePoint: 0.92,
     invert: false,
     dither: true,
   },
@@ -68,6 +80,9 @@ export const ASCII_PRESETS = {
     charset: "blocks",
     brightness: 0,
     contrast: 1.3,
+    gamma: 1.05,
+    blackPoint: 0.1,
+    whitePoint: 0.9,
     invert: false,
     dither: true,
   },
@@ -105,9 +120,18 @@ function mapBrightness(
   value: number,
   brightness: number,
   contrast: number,
+  gamma: number,
+  blackPoint: number,
+  whitePoint: number,
   invert: boolean
 ) {
-  let v = (value - 0.5) * contrast + 0.5 + brightness;
+  const normalized = clamp(
+    (value - blackPoint) / Math.max(whitePoint - blackPoint, 0.001),
+    0,
+    1
+  );
+  let v = Math.pow(normalized, 1 / Math.max(gamma, 0.01));
+  v = (v - 0.5) * contrast + 0.5 + brightness;
   v = clamp(v, 0, 1);
   if (invert) v = 1 - v;
   return v;
@@ -201,6 +225,9 @@ export function imageToAsciiRenderData(
         luminance,
         settings.brightness,
         settings.contrast,
+        settings.gamma,
+        settings.blackPoint,
+        settings.whitePoint,
         settings.invert
       );
     }
